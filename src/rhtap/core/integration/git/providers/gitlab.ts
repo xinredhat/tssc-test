@@ -30,13 +30,20 @@ export class GitlabProvider extends BaseGitProvider {
    */
   private async initGitlabClient(): Promise<GitLabClient> {
     const gitlabToken = this.getToken();
-    const hostname = this.getHost();
+    let hostname = this.getHost();
+
+    // Remove explicit :443 port if present to avoid routing issues
+    // HTTPS uses port 443 by default, so it's redundant and can cause problems
+    hostname = hostname.replace(':443', '');
+
     this.baseUrl = `https://${hostname}`;
 
     // Initialize the GitLab client with the base URL and token
+    // Increased timeout to 120s to handle slow networks and prevent ETIMEDOUT errors
     const gitlabClient = new GitLabClient({
       token: gitlabToken,
       baseUrl: this.baseUrl,
+      timeout: 120000,
     });
     return gitlabClient;
   }

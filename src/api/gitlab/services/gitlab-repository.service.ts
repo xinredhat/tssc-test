@@ -154,10 +154,44 @@ export class GitLabRepositoryService implements IGitLabRepositoryService {
     branch: string = 'main'
   ): Promise<GitLabFile> {
     try {
-      const fileContent = await this.gitlabClient.RepositoryFiles.show(
-        projectId,
-        filePath,
-        branch
+      // Wrap file retrieval with retry logic for transient errors
+      const fileContent = await retry(
+        async (bail, attempt) => {
+          try {
+            return await this.gitlabClient.RepositoryFiles.show(
+              projectId,
+              filePath,
+              branch
+            );
+          } catch (error) {
+            // Check if error is retryable
+            if (isRetryableError(error)) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              console.log(
+                `[GITLAB-RETRY ${attempt}/3] 🔄 Get file ${filePath} failed (retryable): ${errorMessage}`
+              );
+              throw error;
+            } else {
+              // Non-retryable errors should fail immediately
+              console.error(
+                `[GITLAB-FILE] ❌ Non-retryable error getting ${filePath}:`,
+                error
+              );
+              bail(error as Error);
+              return null as any; // TypeScript requirement, never reached
+            }
+          }
+        },
+        {
+          retries: 3,
+          minTimeout: 2000,
+          maxTimeout: 10000,
+          onRetry: (error: Error, attempt: number) => {
+            console.log(
+              `[GITLAB-RETRY ${attempt}/3] ⚠️  Retrying getFileContent for ${filePath} | Reason: ${error.message}`
+            );
+          },
+        }
       );
 
       if (!fileContent || !fileContent.content) {
@@ -182,12 +216,46 @@ export class GitLabRepositoryService implements IGitLabRepositoryService {
     commitMessage: string
   ): Promise<GitLabFileOperationResult> {
     try {
-      const result = await this.gitlabClient.RepositoryFiles.create(
-        projectId,
-        filePath,
-        branch,
-        content,
-        commitMessage
+      // Wrap file creation with retry logic for transient errors
+      const result = await retry(
+        async (bail, attempt) => {
+          try {
+            return await this.gitlabClient.RepositoryFiles.create(
+              projectId,
+              filePath,
+              branch,
+              content,
+              commitMessage
+            );
+          } catch (error) {
+            // Check if error is retryable
+            if (isRetryableError(error)) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              console.log(
+                `[GITLAB-RETRY ${attempt}/3] 🔄 Create file ${filePath} failed (retryable): ${errorMessage}`
+              );
+              throw error;
+            } else {
+              // Non-retryable errors should fail immediately
+              console.error(
+                `[GITLAB-FILE] ❌ Non-retryable error creating ${filePath}:`,
+                error
+              );
+              bail(error as Error);
+              return null as any; // TypeScript requirement, never reached
+            }
+          }
+        },
+        {
+          retries: 3,
+          minTimeout: 2000,
+          maxTimeout: 10000,
+          onRetry: (error: Error, attempt: number) => {
+            console.log(
+              `[GITLAB-RETRY ${attempt}/3] ⚠️  Retrying createFile for ${filePath} | Reason: ${error.message}`
+            );
+          },
+        }
       );
       return result as GitLabFileOperationResult;
     } catch (error) {
@@ -203,12 +271,46 @@ export class GitLabRepositoryService implements IGitLabRepositoryService {
     commitMessage: string
   ): Promise<GitLabFileOperationResult> {
     try {
-      const result = await this.gitlabClient.RepositoryFiles.edit(
-        projectId,
-        filePath,
-        branch,
-        content,
-        commitMessage
+      // Wrap file update with retry logic for transient errors
+      const result = await retry(
+        async (bail, attempt) => {
+          try {
+            return await this.gitlabClient.RepositoryFiles.edit(
+              projectId,
+              filePath,
+              branch,
+              content,
+              commitMessage
+            );
+          } catch (error) {
+            // Check if error is retryable
+            if (isRetryableError(error)) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              console.log(
+                `[GITLAB-RETRY ${attempt}/3] 🔄 Update file ${filePath} failed (retryable): ${errorMessage}`
+              );
+              throw error;
+            } else {
+              // Non-retryable errors should fail immediately
+              console.error(
+                `[GITLAB-FILE] ❌ Non-retryable error updating ${filePath}:`,
+                error
+              );
+              bail(error as Error);
+              return null as any; // TypeScript requirement, never reached
+            }
+          }
+        },
+        {
+          retries: 3,
+          minTimeout: 2000,
+          maxTimeout: 10000,
+          onRetry: (error: Error, attempt: number) => {
+            console.log(
+              `[GITLAB-RETRY ${attempt}/3] ⚠️  Retrying updateFile for ${filePath} | Reason: ${error.message}`
+            );
+          },
+        }
       );
       return result as GitLabFileOperationResult;
     } catch (error) {
